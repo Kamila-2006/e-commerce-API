@@ -20,22 +20,23 @@ class Order(models.Model):
 
     @property
     def total_price(self):
-        return sum(item.calculate_total() for item in self.items.all())
+        return sum(item.calculate_total for item in self.order_items.all())
 
     def __str__(self):
         return f"Заказ №{self.id} - {self.customer_name}"
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='items')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_items')
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=7, decimal_places=2)
 
+    @property
     def calculate_total(self):
         return self.price * self.quantity
 
     def save(self, *args, **kwargs):
-        if not self.price:
+        if self._state.adding:
             self.price = self.product.price
         super().save(*args, **kwargs)
 
