@@ -5,48 +5,34 @@ from products.serializers import ProductSerializer
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
+    product_id = serializers.IntegerField(write_only=True)  # для записи
+    product = ProductSerializer(read_only=True)  # для чтения
+
     class Meta:
         model = OrderItem
-        fields = ['product', 'quantity', 'price']
+        fields = ['product', 'product_id', 'quantity', 'price']
+        read_only_fields = ['price']
 
-    def to_internal_value(self, data):
-        product_id = data.get('product_id')
-        if not product_id:
-            raise serializers.ValidationError({"product_id": "Это поле обязательно."})
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            raise serializers.ValidationError({"product_id": "Продукт с таким ID не найден."})
-
-        data['product'] = product
-        del data['product_id']
-        return super().to_internal_value(data)
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['product'] = {
-            "id": instance.product.id,
-            "name": instance.product.name
-        }
-        return data
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
+    items = OrderItemSerializer(many=True)
+
     class Meta:
         model = Order
         fields = ['id', 'customer_name', 'customer_email', 'customer_phone', 'status', 'shipping_address', 'created_at', 'items']
         read_only_fields = ['id', 'created_at']
 
     def create(self, validated_data):
-        items = validated_data.pop("items")
-        order = Order.objects.create(**validated_data) #создание заказа
-        for item in items:
-            order_item = OrderItem(
-                order = order,
-                product = item['product'], # берем обьект
-                quantity = item['quantity'],
-                price = item['product'].price # фиксация цены товара
+        items_data = validated_data.pop('items')
+        order = Order.objects.create(**validated_data)
+
+        for item_data in items_data:
+            product = Product.objects.get(id=item_data['product_id'])
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=item_data['quantity'],
+                price=product.price
             )
-            order_item.save()
+
         return order
