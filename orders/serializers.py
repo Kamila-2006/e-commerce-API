@@ -5,8 +5,8 @@ from products.serializers import ProductSerializer
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.IntegerField(write_only=True)  # для записи
-    product = ProductSerializer(read_only=True)  # для чтения
+    product_id = serializers.IntegerField(write_only=True)
+    product = ProductSerializer(read_only=True)
 
     class Meta:
         model = OrderItem
